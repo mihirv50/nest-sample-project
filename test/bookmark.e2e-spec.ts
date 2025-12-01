@@ -7,12 +7,10 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from '../src/auth/auth.module';
 import { UserModule } from '../src/user/user.module';
 import { BookmarkModule } from '../src/bookmark/bookmark.module';
-import { startInMemoryMongo, stopInMemoryMongo } from './test-utils';
 
 describe('Bookmark E2E Tests', () => {
   let app: INestApplication;
   let dbConnection: Connection;
-  let mongoUri: string;
   let authToken: string;
   let secondAuthToken: string;
   let bookmarkId: string;
@@ -32,7 +30,8 @@ describe('Bookmark E2E Tests', () => {
   };
 
   beforeAll(async () => {
-    mongoUri = await startInMemoryMongo();
+    // Get MongoDB URI from global setup
+    const mongoUri = (global as any).__MONGO_URI__;
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -76,20 +75,21 @@ describe('Bookmark E2E Tests', () => {
       });
 
     secondAuthToken = signin2Response.body.token;
-  }, 60000);
+  });
 
   afterAll(async () => {
+    // Only close connections, DON'T stop MongoDB
     if (dbConnection) {
       await dbConnection.close();
     }
     if (app) {
       await app.close();
     }
-    await stopInMemoryMongo();
   });
 
   afterEach(async () => {
-    if (dbConnection && dbConnection.collections) {
+    // Clean collections after each test
+    if (dbConnection?.collections) {
       const collections = dbConnection.collections;
       if (collections['bookmarks']) {
         await collections['bookmarks'].deleteMany({});
@@ -269,7 +269,7 @@ describe('Bookmark E2E Tests', () => {
         expect(response.body.message).toBe('Bookmark not found');
       });
 
-      it('should fail when user tries to access another user\'s bookmark', async () => {
+      it("should fail when user tries to access another user's bookmark", async () => {
         const response = await request(app.getHttpServer())
           .get(`/bookmark/${bookmarkId}`)
           .set('Authorization', `Bearer ${secondAuthToken}`)
@@ -282,7 +282,10 @@ describe('Bookmark E2E Tests', () => {
         return request(app.getHttpServer())
           .get('/bookmark/invalid-id')
           .set('Authorization', `Bearer ${authToken}`)
-          .expect(500);
+          .expect(400) // Changed from 500 to 400
+          .expect((res) => {
+            expect(res.body.message).toContain('Invalid');
+          });
       });
 
       it('should fail without authentication', () => {
@@ -395,7 +398,7 @@ describe('Bookmark E2E Tests', () => {
         expect(response.body.message).toBe('Bookmark not found');
       });
 
-      it('should fail when user tries to update another user\'s bookmark', async () => {
+      it("should fail when user tries to update another user's bookmark", async () => {
         const response = await request(app.getHttpServer())
           .put(`/bookmark/${bookmarkId}`)
           .set('Authorization', `Bearer ${secondAuthToken}`)
@@ -467,7 +470,7 @@ describe('Bookmark E2E Tests', () => {
         expect(response.body.message).toBe('Bookmark not found');
       });
 
-      it('should fail when user tries to delete another user\'s bookmark', async () => {
+      it("should fail when user tries to delete another user's bookmark", async () => {
         const response = await request(app.getHttpServer())
           .delete(`/bookmark/${bookmarkId}`)
           .set('Authorization', `Bearer ${secondAuthToken}`)

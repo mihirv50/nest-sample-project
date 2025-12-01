@@ -6,16 +6,15 @@ import { getConnectionToken, MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from '../src/auth/auth.module';
 import { UserModule } from '../src/user/user.module';
-import { startInMemoryMongo, stopInMemoryMongo } from './test-utils';
 
 describe('User E2E Tests', () => {
   let app: INestApplication;
   let dbConnection: Connection;
-  let mongoUri: string;
   let authToken: string;
 
   beforeAll(async () => {
-    mongoUri = await startInMemoryMongo();
+    // Get MongoDB URI from global setup
+    const mongoUri = (global as any).__MONGO_URI__;
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -52,16 +51,16 @@ describe('User E2E Tests', () => {
       });
 
     authToken = signinResponse.body.token;
-  }, 60000); // 60 second timeout for beforeAll
+  });
 
   afterAll(async () => {
+    // Only close connections, DON'T stop MongoDB
     if (dbConnection) {
       await dbConnection.close();
     }
     if (app) {
       await app.close();
     }
-    await stopInMemoryMongo();
   });
 
   describe('User - /users (GET)', () => {

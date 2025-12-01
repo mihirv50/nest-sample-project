@@ -6,15 +6,14 @@ import { getConnectionToken, MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from '../src/auth/auth.module';
 import { UserModule } from '../src/user/user.module';
-import { startInMemoryMongo, stopInMemoryMongo } from './test-utils';
 
 describe('Auth E2E Tests', () => {
   let app: INestApplication;
   let dbConnection: Connection;
-  let mongoUri: string;
 
   beforeAll(async () => {
-    mongoUri = await startInMemoryMongo();
+    // Get MongoDB URI from global setup
+    const mongoUri = (global as any).__MONGO_URI__;
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -33,20 +32,21 @@ describe('Auth E2E Tests', () => {
     dbConnection = moduleFixture.get<Connection>(getConnectionToken());
 
     await app.init();
-  }, 60000);
+  });
 
   afterAll(async () => {
+    // Only close connection, NOT the MongoDB server
     if (dbConnection) {
       await dbConnection.close();
     }
     if (app) {
       await app.close();
     }
-    await stopInMemoryMongo();
   });
 
   afterEach(async () => {
-    if (dbConnection && dbConnection.collections) {
+    // Clean collections after each test
+    if (dbConnection?.collections) {
       const collections = dbConnection.collections;
       for (const key in collections) {
         await collections[key].deleteMany({});
@@ -78,7 +78,7 @@ describe('Auth E2E Tests', () => {
         const response = await request(app.getHttpServer())
           .post('/auth/signup')
           .send(signupDto)
-          .expect(409); // Conflict status
+          .expect(409);
 
         expect(response.body.message).toContain('user already exists');
       });

@@ -1,10 +1,11 @@
 import { 
   ForbiddenException, 
   Injectable, 
-  NotFoundException 
+  NotFoundException,
+  BadRequestException 
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Bookmark } from 'src/schemas/bookmark.schema';
 import { CreateBookmarkDto, EditBookmarkDto } from './dto';
 
@@ -14,12 +15,22 @@ export class BookmarkService {
     @InjectModel(Bookmark.name) private bookmarkModel: Model<Bookmark>,
   ) {}
 
+  // Helper method to validate ObjectId
+  private isValidObjectId(id: string): boolean {
+    return Types.ObjectId.isValid(id);
+  }
+
   async getBookmarks(userId: string) {
     const bookmarks = await this.bookmarkModel.find({ userId });
     return bookmarks;
   }
 
   async getBookmarkByUserId(userId: string, bookmarkId: string) {
+    // Validate ObjectId format
+    if (!this.isValidObjectId(bookmarkId)) {
+      throw new BadRequestException('Invalid bookmark ID format');
+    }
+
     const bookmark = await this.bookmarkModel.findById(bookmarkId);
 
     if (!bookmark) {
@@ -47,6 +58,11 @@ export class BookmarkService {
     bookmarkId: string,
     dto: EditBookmarkDto,
   ) {
+    // Validate ObjectId format
+    if (!this.isValidObjectId(bookmarkId)) {
+      throw new BadRequestException('Invalid bookmark ID format');
+    }
+
     const bookmark = await this.bookmarkModel.findById(bookmarkId);
 
     if (!bookmark) {
@@ -67,6 +83,11 @@ export class BookmarkService {
   }
 
   async deleteBookmarkById(userId: string, bookmarkId: string) {
+    // Validate ObjectId format
+    if (!this.isValidObjectId(bookmarkId)) {
+      throw new BadRequestException('Invalid bookmark ID format');
+    }
+
     const bookmark = await this.bookmarkModel.findById(bookmarkId);
 
     if (!bookmark) {

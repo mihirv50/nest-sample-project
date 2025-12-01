@@ -10,5 +10,7 @@
     "^src/(.*)$": "<rootDir>/../src/$1"
   },
   "testTimeout": 60000,
-  "globalSetup": "<rootDir>/globalSetup.ts"
+  "globalSetup": "<rootDir>/globalSetup.ts",
+  "globalTeardown": "<rootDir>/globalTeardown.ts",
+  "maxWorkers": 1
 }
